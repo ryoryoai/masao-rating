@@ -1,0 +1,3 @@
+interface:
+  display_name: "Masao — Skill Quality Checker"
+  short_description: "Audit skills against 8-dimension quality criteria"
