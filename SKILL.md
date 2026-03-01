@@ -1,5 +1,7 @@
 ---
 name: masao
+user_invocable: true
+invocation_hint: "/masao check <skill> or /masao frame"
 description: >
   Skill quality checker and creation frame. Audits existing skills against
   8-dimension quality criteria and provides a template for creating high-quality skills.
