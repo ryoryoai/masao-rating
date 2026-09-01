@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-masao_check.py — Skill quality checker (8-dimension scoring)
+masao_check.py — Skill quality checker (10-dimension scoring)
 
 Usage:
     python3 masao_check.py <skill-path>          # Single skill
@@ -32,9 +32,11 @@ DIMENSIONS = [
     {"id": 6, "name": "Reference Architecture", "weight": 1.0},
     {"id": 7, "name": "Terminology & Language", "weight": 0.5},
     {"id": 8, "name": "Error Handling", "weight": 1.0},
+    {"id": 9, "name": "Separation of Concerns", "weight": 1.0},
+    {"id": 10, "name": "Quality Check", "weight": 1.0},
 ]
 
-MAX_WEIGHTED = sum(3 * d["weight"] for d in DIMENSIONS)  # 25.5, capped to 24
+MAX_WEIGHTED = sum(3 * d["weight"] for d in DIMENSIONS)  # 31.5, capped to 30
 
 
 # --- Helpers ---
@@ -353,6 +355,118 @@ def check_error_handling(fm: dict, body: str, skill_path: Path) -> dict:
     return {"score": score, "findings": findings}
 
 
+def check_separation_of_concerns(fm: dict, body: str, skill_path: Path) -> dict:
+    """Dimension 9: Separation of Concerns (weight 1.0x)"""
+    skill_md = skill_path / "SKILL.md"
+    content = skill_md.read_text()
+    lines = content.splitlines()
+    total_lines = len(lines)
+
+    # Count inline code blocks and their sizes
+    code_blocks = []
+    in_code_block = False
+    block_start = 0
+    for i, line in enumerate(lines):
+        if line.strip().startswith("```"):
+            if in_code_block:
+                block_len = i - block_start
+                code_blocks.append(block_len)
+                in_code_block = False
+            else:
+                block_start = i + 1
+                in_code_block = True
+
+    long_blocks = [b for b in code_blocks if b >= 10]
+    total_code_lines = sum(code_blocks)
+    code_ratio = total_code_lines / total_lines if total_lines > 0 else 0
+
+    has_scripts = (skill_path / "scripts").is_dir()
+    has_refs = (skill_path / "references").is_dir()
+
+    findings = []
+    findings.append(f"Inline code blocks: {len(code_blocks)}")
+    findings.append(f"Long code blocks (10+ lines): {len(long_blocks)}")
+    findings.append(f"Code lines / total lines: {total_code_lines}/{total_lines} ({code_ratio:.0%})")
+    findings.append(f"scripts/ exists: {'yes' if has_scripts else 'no'}")
+    findings.append(f"references/ exists: {'yes' if has_refs else 'no'}")
+
+    # Score: long inline code = bad, separated into scripts/references = good
+    if len(long_blocks) >= 3 or code_ratio > 0.5:
+        score = 0
+    elif len(long_blocks) >= 2 or code_ratio > 0.3:
+        score = 1
+    elif len(long_blocks) <= 1 and (has_scripts or has_refs):
+        score = 2 if code_ratio > 0.15 else 3
+    else:
+        score = 1 if len(code_blocks) > 0 else 2
+
+    return {"score": score, "findings": findings}
+
+
+def check_quality_check(fm: dict, body: str, skill_path: Path) -> dict:
+    """Dimension 10: Quality Check (weight 1.0x)"""
+    content_lower = body.lower()
+    full_content = (skill_path / "SKILL.md").read_text()
+
+    # Verification keywords
+    verify_keywords = [
+        "チェック", "validate", "検証", "verify", "success criteria",
+        "品質", "quality", "確認", "テスト", "test", "assert",
+    ]
+    found_keywords = [kw for kw in verify_keywords if kw in content_lower or kw in body]
+
+    # Checklist items (- [ ] or - [x])
+    checklist_items = len(re.findall(r"^[\s]*- \[[ x]\]", full_content, re.MULTILINE))
+
+    # Verification section
+    has_verify_section = bool(re.search(
+        r"^#{1,3}\s+.*(検証|チェック|verify|validation|quality|品質|確認).*$",
+        body, re.MULTILINE | re.IGNORECASE
+    ))
+
+    # Verification scripts in scripts/
+    verify_scripts = []
+    scripts_dir = skill_path / "scripts"
+    if scripts_dir.is_dir():
+        verify_patterns = ["validate", "check", "verify", "test", "lint", "quality"]
+        for f in scripts_dir.iterdir():
+            if f.is_file() and any(p in f.name.lower() for p in verify_patterns):
+                verify_scripts.append(f.name)
+
+    # Workflow verification steps (numbered steps containing verification language)
+    workflow_verify_steps = len(re.findall(
+        r"^\d+\.\s+.*(?:検証|確認|チェック|verify|validate|check|test)",
+        body, re.MULTILINE | re.IGNORECASE
+    ))
+
+    findings = []
+    findings.append(f"Verification keywords: {found_keywords or 'none'}")
+    findings.append(f"Checklist items: {checklist_items}")
+    findings.append(f"Verification section: {'yes' if has_verify_section else 'no'}")
+    findings.append(f"Verify scripts: {verify_scripts or 'none'}")
+    findings.append(f"Workflow verify steps: {workflow_verify_steps}")
+
+    # Score
+    signals = sum([
+        len(found_keywords) >= 2,
+        checklist_items >= 1,
+        has_verify_section,
+        len(verify_scripts) >= 1,
+        workflow_verify_steps >= 1,
+    ])
+
+    if signals == 0:
+        score = 0
+    elif signals <= 1:
+        score = 1
+    elif signals <= 2:
+        score = 2
+    else:
+        score = 3
+
+    return {"score": score, "findings": findings}
+
+
 # --- Main Logic ---
 
 def check_skill(skill_path: Path) -> dict:
@@ -380,6 +494,8 @@ def check_skill(skill_path: Path) -> dict:
         check_reference_architecture,
         check_terminology,
         check_error_handling,
+        check_separation_of_concerns,
+        check_quality_check,
     ]
 
     results = []
@@ -407,20 +523,20 @@ def check_skill(skill_path: Path) -> dict:
             "findings": result["findings"],
         })
 
-    # Grade calculation (cap at 24)
-    capped_max = 24.0
+    # Grade calculation (cap at 30)
+    capped_max = 30.0
     if has_null:
         grade = "?"
         grade_label = "Incomplete (AI judgment needed)"
     else:
         total = min(total_weighted, capped_max)
-        if total >= 22:
+        if total >= 27:
             grade, grade_label = "S", "Excellent"
-        elif total >= 18:
+        elif total >= 23:
             grade, grade_label = "A", "Good"
-        elif total >= 14:
+        elif total >= 18:
             grade, grade_label = "B", "Acceptable"
-        elif total >= 10:
+        elif total >= 13:
             grade, grade_label = "C", "Needs Work"
         else:
             grade, grade_label = "D", "Poor"

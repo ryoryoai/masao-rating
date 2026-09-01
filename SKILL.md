@@ -4,7 +4,7 @@ user_invocable: true
 invocation_hint: "/masao check <skill> or /masao frame"
 description: >
   Skill quality checker and creation frame. Audits existing skills against
-  8-dimension quality criteria and provides a template for creating high-quality skills.
+  10-dimension quality criteria and provides a template for creating high-quality skills.
   Triggers: masao, スキル品質, skill quality, スキルチェック, skill check,
   品質診断, quality audit, スキル診断, skill frame, スキルフレーム,
   テンプレート作成, skill template.
@@ -20,7 +20,7 @@ metadata:
 
 # Masao — Skill Quality Checker & Frame
 
-スキルの品質を8次元で診断し、高品質スキルを作るためのフレームを提供する。
+スキルの品質を10次元で診断し、高品質スキルを作るためのフレームを提供する。
 
 ---
 
@@ -52,7 +52,7 @@ python3 ~/.claude/skills/masao/scripts/masao_check.py --all
 
 全スキルのサマリーテーブルを生成し、グレード順にソートして出力。
 
-### 8次元スコアリング概要
+### 10次元スコアリング概要
 
 | # | 次元 | 重み | 主な評価観点 |
 |---|------|------|-------------|
@@ -64,6 +64,8 @@ python3 ~/.claude/skills/masao/scripts/masao_check.py --all
 | 6 | Reference Architecture | 1.0x | 1階層参照、ナビゲーション |
 | 7 | Terminology & Language | 0.5x | 用語一貫性、時間依存情報なし |
 | 8 | Error Handling | 1.0x | トラブルシューティング、フォールバック |
+| 9 | Separation of Concerns | 1.0x | インラインコード量、scripts/references 分離、単一責任 |
+| 10 | Quality Check | 1.0x | 検証キーワード、チェックリスト、検証スクリプト有無 |
 
 詳細基準: `references/scoring-rubric.md`
 
@@ -85,7 +87,9 @@ python3 ~/.claude/skills/masao/scripts/masao_check.py --all
 | 6 | Reference Arch.     | ?/3   | 1.0x   | ?        | ...                  |
 | 7 | Terminology         | ?/3   | 0.5x   | ?        | ...                  |
 | 8 | Error Handling      | ?/3   | 1.0x   | ?        | ...                  |
-| **Total**            |       |        | **?/24** |                      |
+| 9 | Separation of Concerns | ?/3 | 1.0x  | ?        | ...                  |
+| 10 | Quality Check      | ?/3   | 1.0x   | ?        | ...                  |
+| **Total**            |       |        | **?/30** |                      |
 
 ### Top 3 改善提案
 1. ...
@@ -94,11 +98,11 @@ python3 ~/.claude/skills/masao/scripts/masao_check.py --all
 ```
 
 **グレード判定:**
-- **S** (22-24): Excellent
-- **A** (18-21): Good
-- **B** (14-17): Acceptable
-- **C** (10-13): Needs Work
-- **D** (< 10): Poor
+- **S** (27-30): Excellent
+- **A** (23-26): Good
+- **B** (18-22): Acceptable
+- **C** (13-17): Needs Work
+- **D** (< 13): Poor
 
 ---
 
@@ -150,6 +154,6 @@ python3 ~/.claude/skills/masao/scripts/masao_check.py --all
 | ファイル | 内容 |
 |----------|------|
 | `scripts/masao_check.py` | 自動品質チェックスクリプト |
-| `references/scoring-rubric.md` | 8次元スコアリング詳細基準 |
+| `references/scoring-rubric.md` | 10次元スコアリング詳細基準 |
 | `references/quality-patterns.md` | 良い/悪いパターン実例集 |
 | `references/skill-frame-template.md` | 新規スキル作成テンプレート |
